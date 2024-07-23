@@ -1,0 +1,65 @@
+services:
+
+  proxy:
+    build:
+      context: proxy/
+      dockerfile: dockerfile
+    image: leonardograselalmeida/desafio_node_proxy
+    container_name: proxy
+    restart: always
+    networks:
+      - node-network
+    ports:
+      - "8080:80"
+    tty: true
+    depends_on:
+      - app
+
+  app:
+    build:
+      context: app/
+      dockerfile: dockerfile
+    image: leonardograselalmeida/desafio_node
+    container_name: app
+    volumes:
+      - ./app:/urs/src/app
+    networks:
+      - node-network
+    tty: true
+    restart: always
+    depends_on:
+      db:
+        condition: service_healthy
+
+  db:
+    image: mysql:9.0
+    command: --innodb-use-native-aio=0
+    container_name: db
+    restart: always
+    tty: true
+    volumes:
+      - ./db:/var/lib/mysql
+    environment:
+      - MYSQL_DATABASE=nodedb
+      - MYSQL_ROOT_PASSWORD=root
+    networks:
+      - node-network
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "mysqladmin",
+          "ping",
+          "-h",
+          "localhost",
+          "-u",
+          "root",
+          "-p$$MYSQL_ROOT_PASSWORD"
+        ]
+      interval: 5s
+      timeout: 10s
+      retries: 3
+
+networks:
+  node-network:
+    driver: bridge
